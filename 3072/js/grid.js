@@ -99,6 +99,30 @@ Grid.prototype.withinBounds = function (position) {
          position.y >= 0 && position.y < this.size;
 };
 
+Grid.prototype.countOne = function () {
+  var count = 0;
+  for (var x = 0; x < this.size; x++) {
+    for (var y = 0; y < this.size; y++) {
+      tile = this.cellContent({ x: x, y: y });
+      if(tile && tile.value === 1)
+        count = count + 1;
+    }
+  }
+  return count;
+};
+
+Grid.prototype.countTwo = function (position) {
+  var count = 0;
+  for (var x = 0; x < this.size; x++) {
+    for (var y = 0; y < this.size; y++) {
+      tile = this.cellContent({ x: x, y: y });
+      if(tile && tile.value === 2)
+        count = count + 1;
+    }
+  }
+  return count;
+};
+
 Grid.prototype.serialize = function () {
   var cellState = [];
 
