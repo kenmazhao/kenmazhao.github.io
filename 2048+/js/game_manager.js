@@ -43,12 +43,14 @@ GameManager.prototype.setup = function () {
   if (previousState) {
     this.grid        = new Grid(previousState.grid.size,
                                 previousState.grid.cells); // Reload grid
+    this.predictor   = previousState.predictor;
     this.score       = previousState.score;
     this.over        = previousState.over;
     this.won         = previousState.won;
     this.keepPlaying = previousState.keepPlaying;
   } else {
     this.grid        = new Grid(this.size);
+    this.predictor   = 0;
     this.score       = 0;
     this.over        = false;
     this.won         = false;
@@ -72,28 +74,26 @@ GameManager.prototype.addStartTiles = function () {
 // Adds a tile in a random position
 GameManager.prototype.addRandomTile = function () {
   if (this.grid.cellsAvailable()) {
-
-    if(this.grid.countTwo() - this.grid.countOne() >=3){
-      console.log("1");
-      var value = 1;
-    } else if (this.grid.countOne() - this.grid.countTwo() >=3){
-      console.log("2");
-      var value = 2;
-    } else {
-      console.log("random");
-    var random = Math.random()
-    var value = random > 0.99375 ? 24 
-              : random > 0.9875 ? 12 
-              : random > 0.975 ? 6
-              : random > 0.8 ? 3 
-              : random > 0.4 ? 2
-              : 1;
-    }
-    var tile = new Tile(this.grid.randomAvailableCell(), value);
-
+    var tile = new Tile(this.grid.randomAvailableCell(), this.predictor === 0 ? this.predict() : this.predictor);
     this.grid.insertTile(tile);
+    this.predict();
   }
 };
+
+GameManager.prototype.predict = function () {
+    balancer = 0.25 + (this.grid.countThree() - this.grid.countOne())*0.07
+    var random = Math.random()
+    var value = random > 0.99375 ? 32 
+              : random > 0.9875 ? 16 
+              : random > 0.975 ? 8
+              : random > 0.5 ? 4
+              : random > balancer ? 3
+              : 1;
+    
+    this.predictor = value;
+
+    return this.predictor;
+}
 
 // Sends the updated grid to the actuator
 GameManager.prototype.actuate = function () {
@@ -107,8 +107,8 @@ GameManager.prototype.actuate = function () {
   } else {
     this.storageManager.setGameState(this.serialize());
   }
-
   this.actuator.actuate(this.grid, {
+    predictor:  this.predictor,
     score:      this.score,
     over:       this.over,
     won:        this.won,
@@ -122,6 +122,7 @@ GameManager.prototype.actuate = function () {
 GameManager.prototype.serialize = function () {
   return {
     grid:        this.grid.serialize(),
+    predictor:   this.predictor, 
     score:       this.score,
     over:        this.over,
     won:         this.won,
@@ -173,11 +174,11 @@ GameManager.prototype.move = function (direction) {
         var next      = self.grid.cellContent(positions.next);
 
         // Only one merger per row traversal?
-        if (next && ((tile.value >=3 && next.value === tile.value) || (next.value + tile.value === 3)) && !next.mergedFrom){
-          if(tile.value >=3)
+        if (next && ((tile.value >=4 && next.value === tile.value) || (next.value + tile.value === 4)) && !next.mergedFrom){
+          if(tile.value >=4)
             var merged = new Tile(positions.next, tile.value * 2);
           else
-            var merged = new Tile(positions.next, 3);
+            var merged = new Tile(positions.next, 4);
           merged.mergedFrom = [tile, next];
 
           self.grid.insertTile(merged);
@@ -279,7 +280,7 @@ GameManager.prototype.tileMatchesAvailable = function () {
 
           var other  = self.grid.cellContent(cell);
 
-          if (other && ((tile.value >=3 && other.value === tile.value) || (other.value + tile.value === 3))){
+          if (other && ((tile.value >=4 && other.value === tile.value) || (other.value + tile.value === 4))){
 //          if (other && other.value === tile.value) {
             return true; // These two tiles can be merged
           }
